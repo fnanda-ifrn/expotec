@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ensine uma máquina · Além da Tela</title>
+<style>
+  :root{
+    --ink:#14213D; --muted:#5B6478; --line:#D3DAE6; --cream:#E9EDF3; --paper:#fff;
+    --ai:#7B3FC9; --green:#1E7B47; --red:#C62828; --gold:#F2B705; --night:#0B1024;
+    --c0:#E8730C; --c1:#2F5BEA; --c2:#1E7B47;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;background:var(--cream)}
+  body{font-family:"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;color:var(--ink);-webkit-user-select:none;user-select:none}
+  button,input{font:inherit;color:inherit}
+  button{cursor:pointer}
+  .emo{font-family:"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif;font-style:normal}
+  #fit{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+  #app{width:1600px;height:900px;flex:none;position:relative;transform-origin:center center;padding:20px 28px;display:grid;grid-template-columns:600px minmax(0,1fr) 430px;grid-template-rows:70px 1fr;gap:16px 22px}
+  .card{background:var(--paper);border-radius:24px;box-shadow:0 2px 0 var(--line)}
+  h2.t{margin:0;font-size:15px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:10px}
+  h2.t .n{background:var(--ai);color:#fff;border-radius:999px;padding:2px 11px;letter-spacing:.02em}
+
+  header{grid-column:1 / span 3;display:flex;align-items:center;gap:16px}
+  header .logo{width:58px;height:58px;border-radius:16px;background:var(--ai);display:flex;align-items:center;justify-content:center;font-size:32px}
+  header h1{margin:0;font-size:38px}
+  header p{margin:2px 0 0;font-size:17px;color:var(--muted);font-weight:600}
+  header .sp{flex:1}
+  .trail{display:flex;gap:8px}
+  .trail span{display:flex;align-items:center;gap:8px;background:var(--paper);border-radius:999px;padding:8px 16px 8px 10px;font-size:17px;font-weight:800;color:#9AA3B5;box-shadow:0 2px 0 var(--line)}
+  .trail span .e{font-size:24px;filter:grayscale(1);opacity:.6}
+  .trail span.on{color:var(--ai);box-shadow:0 0 0 3px var(--ai)}
+  .trail span.on .e,.trail span.done .e{filter:none;opacity:1}
+  .trail span.done{color:var(--green)}
+  .reset{border:0;background:#EEF1F6;border-radius:12px;height:44px;padding:0 14px;font-weight:800;font-size:15px}
+
+  /* quadro */
+  .drawc{padding:16px;display:flex;flex-direction:column;gap:12px}
+  .ask{display:flex;align-items:center;gap:12px;border-radius:16px;padding:10px 16px;font-size:26px;font-weight:900;color:#fff;min-height:62px}
+  .ask .e{font-size:38px}
+  .ask.test{background:var(--night)}
+  #pad{width:568px;height:568px;border-radius:18px;background:#fff;border:4px dashed #C3CCDA;touch-action:none;cursor:crosshair;display:block}
+  .row{display:flex;gap:10px}
+  .btn{border:0;border-radius:14px;height:58px;padding:0 18px;font-size:20px;font-weight:900;display:flex;align-items:center;justify-content:center;gap:8px;flex:1}
+  .btn.clear{background:#EEF1F6;flex:0 0 170px}
+  .btn.save{color:#fff}
+  .btn:disabled{opacity:.35;cursor:default}
+  .btn[hidden]{display:none}
+
+  /* classes */
+  .cls{padding:16px 18px;display:flex;flex-direction:column;gap:12px;min-height:0}
+  .clist{display:flex;flex-direction:column;gap:12px;flex:1;min-height:0}
+  .klass{min-width:0;border-radius:18px;border:3px solid var(--line);padding:12px 14px;display:flex;flex-direction:column;gap:10px;cursor:pointer;transition:box-shadow .15s, transform .15s}
+  .klass.active{box-shadow:0 0 0 5px var(--gold);transform:translateX(4px)}
+  .khead{display:flex;align-items:center;gap:10px}
+  .kemo{font-size:34px;border:0;background:#F1F4F8;border-radius:12px;width:54px;height:54px;flex:none}
+  .kname{flex:1;min-width:0;border:2px solid transparent;border-radius:10px;font-size:24px;font-weight:900;padding:4px 8px;background:transparent;outline:none;-webkit-user-select:text;user-select:text}
+  .kname:focus{border-color:var(--gold);background:#FFFBF0}
+  .kcount{font-size:17px;font-weight:800;color:var(--muted);white-space:nowrap}
+  .kdel{border:0;background:transparent;color:#9AA3B5;font-size:22px;font-weight:900;width:30px}
+  .thumbs{display:flex;gap:8px;height:74px;overflow-x:auto;overflow-y:hidden;min-width:0;padding:4px 2px 0}
+  .th{position:relative;flex:none;width:64px;height:64px}
+  .th canvas{width:64px;height:64px;border-radius:9px;background:#fff;border:2px solid #E3E8EF;display:block;box-sizing:border-box}
+  .th button{position:absolute;width:24px;height:24px;border-radius:50%;border:0;font-size:13px;font-weight:900;line-height:24px;padding:0;color:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+  .th .tx{right:-6px;top:-6px;background:#C62828}
+  .th .tdl{right:-6px;bottom:-4px;background:#14213D}
+  .thumbs .emptyt{font-size:15px;color:#9AA3B5;font-weight:700;align-self:center}
+  .addk{border:3px dashed #C3CCDA;background:transparent;border-radius:16px;height:52px;font-size:18px;font-weight:800;color:#7C879B}
+  .addk[hidden]{display:none}
+  .hint{font-size:16px;font-weight:700;color:var(--muted);text-align:center}
+
+  /* treino e teste */
+  .side{padding:16px 18px;display:flex;flex-direction:column;gap:12px;min-height:0}
+  .train{border:0;border-radius:16px;height:62px;background:var(--ai);color:#fff;font-size:24px;font-weight:900;display:flex;align-items:center;justify-content:center;gap:10px}
+  .train:disabled{opacity:.4;cursor:default}
+  .need{font-size:16px;font-weight:700;color:var(--muted);text-align:center;margin-top:-4px}
+  .tbox{background:#F1F4F8;border-radius:18px;padding:12px 14px}
+  .tline{display:flex;justify-content:space-between;font-size:18px;font-weight:800}
+  .tline b{color:var(--ai);font-variant-numeric:tabular-nums}
+  #chart{width:100%;height:84px;display:block;margin-top:6px}
+  .knobs{display:flex;gap:10px;justify-content:center;margin-top:6px}
+  .knob{width:28px;height:28px;border-radius:50%;background:#fff;border:3px solid var(--ai);position:relative}
+  .knob::after{content:"";position:absolute;left:50%;top:2px;width:3px;height:9px;background:var(--ai);transform:translateX(-50%);border-radius:2px}
+  .exam{border-radius:18px;padding:10px 14px;font-size:17px;font-weight:800;background:#E3F4E8;color:#145C33;display:flex;align-items:center;gap:12px}
+  .exam .e{font-size:32px}
+  .exam[hidden]{display:none}
+  .guess{background:var(--night);color:#fff;border-radius:18px;padding:10px 16px;display:flex;align-items:center;gap:14px;min-height:78px}
+  .guess .e{font-size:50px}
+  .guess .tx{font-size:20px;font-weight:700;line-height:1.3}
+  .guess .tx b{font-size:26px;color:var(--gold)}
+  .live{display:flex;flex-direction:column;gap:8px}
+  .lbar{display:grid;grid-template-columns:40px 1fr 56px;gap:10px;align-items:center;font-size:20px;font-weight:800}
+  .lbar .e{font-size:28px;text-align:center}
+  .lbar .tr{height:32px;background:#E3E8EF;border-radius:999px;overflow:hidden;position:relative}
+  .lbar .fl{height:100%;width:0;border-radius:999px;transition:width .25s ease}
+  .lbar .nm{position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:16px;color:var(--ink);white-space:nowrap}
+  .lbar .pc{text-align:right;color:var(--muted);font-size:18px}
+  .say{background:#FFF3C4;color:#5A4300;border-radius:16px;padding:12px 16px;font-size:17px;font-weight:700;line-height:1.35;margin-top:auto}
+  .say b{color:#8A5A00}
+  .blank{display:inline-block;width:.9em;height:.9em;border:3px dashed #9AA3B5;border-radius:8px;vertical-align:middle;box-sizing:border-box}
+  .ask .blank{border-color:rgba(255,255,255,.8)}
+  .kname::placeholder{color:#A9B2C3}
+  .btn.dl{background:#14213D;color:#fff;flex:0 0 auto}
+  .sideIdle{font-size:17px;font-weight:700;color:var(--muted);line-height:1.4;text-align:center;padding:6px}
+</style>
+</head>
+<body>
+<div id="fit"><div id="app">
+
+  <header>
+    <div class="logo emo" aria-hidden="true">🎓</div>
+    <div><h1>Ensine uma máquina</h1><p>Você desenha os exemplos, ela aprende na hora</p></div>
+    <div class="sp"></div>
+    <div class="trail" id="trail">
+      <span data-s="1"><span class="e emo">📦</span>1. exemplos</span>
+      <span data-s="2"><span class="e emo">🎛️</span>2 e 3. treino</span>
+      <span data-s="4"><span class="e emo">📝</span>4. teste</span>
+    </div>
+    <button class="reset" id="reset" title="apagar tudo para o próximo grupo">↺ Recomeçar</button>
+  </header>
+
+  <section class="drawc card">
+    <div class="ask" id="ask"></div>
+    <canvas id="pad" width="568" height="568"></canvas>
+    <div class="row">
+      <button class="btn clear" id="clear"><span class="emo">🧽</span> Apagar</button>
+      <button class="btn save" id="save" disabled><span class="emo">✔️</span> Guardar exemplo</button>
+    </div>
+  </section>
+
+  <section class="cls card">
+    <h2 class="t"><span class="n">1</span> Exemplos: clique numa classe e desenhe</h2>
+    <div class="clist" id="clist"></div>
+    <button class="addk" id="addk">+ adicionar outra classe</button>
+    <div class="hint" id="hint"></div>
+  </section>
+
+  <section class="side card">
+    <h2 class="t"><span class="n">2 e 3</span> Treino</h2>
+    <button class="train" id="train" disabled><span class="emo">🧠</span> Treinar a IA</button>
+    <div class="need" id="need"></div>
+    <div class="tbox">
+      <div class="tline"><span>tentativas</span><b id="tN">0</b></div>
+      <div class="tline"><span>acertos no treino</span><b id="tAcc">–</b></div>
+      <canvas id="chart" width="380" height="84"></canvas>
+      <div class="knobs" id="knobs"><i class="knob"></i><i class="knob"></i><i class="knob"></i><i class="knob"></i><i class="knob"></i><i class="knob"></i><i class="knob"></i></div>
+    </div>
+    <div class="exam" id="exam" hidden><span class="e emo">📝</span><span id="examT"></span></div>
+    <h2 class="t"><span class="n">4</span> Teste</h2>
+    <div id="testBox"><div class="sideIdle">Depois do treino, desenhe algo novo e veja o palpite da IA.</div></div>
+    <div class="say" id="say"><span class="emo">🗣️</span> Ninguém vai escrever regra nenhuma: a máquina vai <b>descobrir sozinha</b> o que diferencia um desenho do outro.</div>
+  </section>
+
+</div></div>
+
+<script>
+(function(){
+  "use strict";
+  var app=document.getElementById('app');
+  function fit(){ var s=Math.min(window.innerWidth/1600, window.innerHeight/900); app.style.transform='scale('+s+')'; }
+  window.addEventListener('resize',fit); fit();
+
+  var COLORS=['#E8730C','#2F5BEA','#1E7B47'];
+  var EMOJIS=['','☀️','🏠','🐟','🌳','⭐','❤️','🐱','🚗','🌙','🍎','☂️','🌸'];
+  function emoH(c){ return c.emo ? c.emo : '<span class="blank" title="sem símbolo"></span>'; }
+  function nameOf(c,i){ return c.name || ('classe '+(i+1)); }
+  var S=28, DIM=S*S, MINEX=4, AUG=30;
+  var classes=[], active=0, model=null, trained=false, training=false;
+
+  /* ---------- quadro (mesa digitalizadora, mouse ou dedo) ---------- */
+  var pad=document.getElementById('pad'), px=pad.getContext('2d',{willReadFrequently:true});
+  function clearPad(){ px.fillStyle='#fff'; px.fillRect(0,0,pad.width,pad.height); inked=false; updateSave(); }
+  var drawing=false, last=null, inked=false;
+  px.lineCap='round'; px.lineJoin='round'; px.strokeStyle='#111'; px.lineWidth=16;
+  function pos(e){ var r=pad.getBoundingClientRect(); return {x:(e.clientX-r.left)*pad.width/r.width, y:(e.clientY-r.top)*pad.height/r.height}; }
+  pad.addEventListener('pointerdown',function(e){ e.preventDefault(); pad.setPointerCapture(e.pointerId); drawing=true; last=pos(e); px.fillStyle='#111'; px.beginPath(); px.arc(last.x,last.y,8,0,7); px.fill(); inked=true; updateSave(); });
+  pad.addEventListener('pointermove',function(e){ if(!drawing) return; var p=pos(e); px.beginPath(); px.moveTo(last.x,last.y); px.lineTo(p.x,p.y); px.stroke(); last=p; });
+  function up(){ if(!drawing) return; drawing=false; if(trained) guessNow(); }
+  pad.addEventListener('pointerup',up); pad.addEventListener('pointercancel',up);
+  clearPad();
+
+  /* ---------- desenho -> 28x28 (recorta, cabe em 22x22, centraliza) ---------- */
+  function toGrid(){
+    var W=pad.width, H=pad.height, d=px.getImageData(0,0,W,H).data, minx=W,miny=H,maxx=-1,maxy=-1;
+    for(var y=0;y<H;y+=2) for(var x=0;x<W;x+=2) if(d[(y*W+x)*4]<128){ if(x<minx)minx=x; if(x>maxx)maxx=x; if(y<miny)miny=y; if(y>maxy)maxy=y; }
+    if(maxx<0) return null;
+    var bw=maxx-minx+10, bh=maxy-miny+10, side=Math.max(bw,bh); minx-=5; miny-=5;
+    var c=document.createElement('canvas'); c.width=S; c.height=S; var g=c.getContext('2d'); g.fillStyle='#fff'; g.fillRect(0,0,S,S); g.imageSmoothingQuality='high';
+    // reduz aos poucos para suavizar
+    var src=pad, sx=minx, sy=miny, sw=bw, sh=bh, cw=bw, ch=bh;
+    while(cw>120){ cw=Math.round(cw/2); ch=Math.round(ch/2); var t=document.createElement('canvas'); t.width=cw; t.height=ch; var tg=t.getContext('2d'); tg.imageSmoothingQuality='high'; tg.drawImage(src,sx,sy,sw,sh,0,0,cw,ch); src=t; sx=0; sy=0; sw=cw; sh=ch; }
+    var tw=22*bw/side, th=22*bh/side;
+    g.drawImage(src,sx,sy,sw,sh,(S-tw)/2,(S-th)/2,tw,th);
+    var gd=g.getImageData(0,0,S,S).data, v=new Float32Array(DIM);
+    for(var i=0;i<DIM;i++) v[i]=1-gd[i*4]/255;
+    return v;
+  }
+  /* variações de um exemplo: gira, aumenta/diminui, desloca, engrossa (data augmentation) */
+  var aSrc=document.createElement('canvas'); aSrc.width=S; aSrc.height=S; var aSx=aSrc.getContext('2d');
+  var aDst=document.createElement('canvas'); aDst.width=S; aDst.height=S; var aDx=aDst.getContext('2d',{willReadFrequently:true});
+  function variant(v,strength){
+    var im=aSx.createImageData(S,S); for(var i=0;i<DIM;i++){ var c=255-Math.round(v[i]*255); im.data[i*4]=im.data[i*4+1]=im.data[i*4+2]=c; im.data[i*4+3]=255; }
+    aSx.putImageData(im,0,0);
+    aDx.setTransform(1,0,0,1,0,0); aDx.fillStyle='#fff'; aDx.fillRect(0,0,S,S);
+    var a=(Math.random()-.5)*0.5*strength, sc=1+(Math.random()-.5)*0.3*strength, dx=(Math.random()-.5)*4*strength, dy=(Math.random()-.5)*4*strength;
+    aDx.translate(S/2+dx,S/2+dy); aDx.rotate(a); aDx.scale(sc*(1+(Math.random()-.5)*0.15*strength),sc); aDx.translate(-S/2,-S/2);
+    aDx.drawImage(aSrc,0,0);
+    var d=aDx.getImageData(0,0,S,S).data, o=new Float32Array(DIM);
+    for(var k=0;k<DIM;k++) o[k]=1-d[k*4]/255;
+    return feat(o);
+  }
+  /* características: borra um pouco (tolerância) e normaliza */
+  function feat(v){
+    var b=new Float32Array(DIM);
+    for(var y=0;y<S;y++) for(var x=0;x<S;x++){ var s=0,n=0; for(var j=-1;j<=1;j++) for(var i=-1;i<=1;i++){ var X=x+i,Y=y+j; if(X>=0&&X<S&&Y>=0&&Y<S){ s+=v[Y*S+X]*(i||j?1:2); n+=(i||j?1:2); } } b[y*S+x]=s/n; }
+    var m=0; for(var q=0;q<DIM;q++) m+=b[q]; m/=DIM; var sd=0; for(var r=0;r<DIM;r++){ b[r]-=m; sd+=b[r]*b[r]; } sd=Math.sqrt(sd/DIM)||1; for(var t=0;t<DIM;t++) b[t]/=sd;
+    return b;
+  }
+
+  /* ---------- classes ---------- */
+  var clist=document.getElementById('clist');
+  function addClass(name,emo){ if(classes.length>=3) return; classes.push({name:name,emo:emo,ex:[]}); invalidate(); renderClasses(); }
+  function drawThumb(cv,v){ cv.width=S; cv.height=S; var g=cv.getContext('2d'), im=g.createImageData(S,S); for(var i=0;i<DIM;i++){ var c=255-Math.round(v[i]*255); im.data[i*4]=im.data[i*4+1]=im.data[i*4+2]=c; im.data[i*4+3]=255; } g.putImageData(im,0,0); }
+  function renderClasses(){
+    clist.innerHTML='';
+    classes.forEach(function(c,i){
+      var k=document.createElement('div'); k.className='klass'+(i===active&&!trained?' active':''); k.style.borderColor=COLORS[i];
+      k.innerHTML='<div class="khead"><button class="kemo emo" title="trocar o símbolo">'+emoH(c)+'</button><input class="kname" maxlength="16" placeholder="dê um nome"><span class="kcount">'+c.ex.length+' desenhos</span>'+(classes.length>2?'<button class="kdel" title="tirar esta classe">✕</button>':'')+'</div><div class="thumbs"></div>';
+      var inp=k.querySelector('.kname'); inp.value=c.name;
+      var th=k.querySelector('.thumbs');
+      if(!c.ex.length) th.innerHTML='<span class="emptyt">nenhum desenho ainda</span>';
+      c.ex.forEach(function(v,k){
+        var w=document.createElement('div'); w.className='th'; var cv=document.createElement('canvas'); drawThumb(cv,v); w.appendChild(cv);
+        var bd=document.createElement('button'); bd.className='tdl'; bd.title='baixar este desenho'; bd.textContent='⬇'; w.appendChild(bd);
+        var bx=document.createElement('button'); bx.className='tx'; bx.title='tirar este desenho'; bx.textContent='✕'; w.appendChild(bx);
+        bd.addEventListener('click',function(e){ e.stopPropagation(); downloadEx(c,k); });
+        bx.addEventListener('click',function(e){ e.stopPropagation(); c.ex.splice(k,1); if(c.png) c.png.splice(k,1); invalidate(); renderClasses(); });
+        th.appendChild(w);
+      });
+      th.scrollLeft=th.scrollWidth;
+      k.addEventListener('click',function(e){ if(e.target.closest('.kemo,.kname,.kdel')) return; setActive(i); });
+      inp.addEventListener('input',function(){ c.name=inp.value.trim(); updateAsk(); renderTest(); });
+      inp.addEventListener('focus',function(){ setActive(i,true); });
+      k.querySelector('.kemo').addEventListener('click',function(){ var j=(EMOJIS.indexOf(c.emo)+1)%EMOJIS.length; c.emo=EMOJIS[j]; this.innerHTML=emoH(c); setActive(i,true); updateAsk(); renderTest(); });
+      var del=k.querySelector('.kdel'); if(del) del.addEventListener('click',function(e){ e.stopPropagation(); classes.splice(i,1); if(active>=classes.length) active=0; invalidate(); renderClasses(); });
+      clist.appendChild(k);
+    });
+    document.getElementById('addk').hidden=classes.length>=3;
+    updateAsk(); setStage();
+  }
+  function setActive(i,keep){ if(trained){ invalidate(); } active=i; [].forEach.call(clist.children,function(k,j){ k.classList.toggle('active',j===active); }); updateAsk(); setStage(); }
+  document.getElementById('addk').addEventListener('click',function(){ addClass('',''); active=classes.length-1; renderClasses(); var inp=clist.children[active] && clist.children[active].querySelector('.kname'); if(inp) inp.focus(); });
+
+  var askEl=document.getElementById('ask'), saveBtn=document.getElementById('save');
+  function updateAsk(){
+    var clr=document.getElementById('clear');
+    if(trained){ askEl.className='ask test'; askEl.style.background=''; askEl.innerHTML='<span class="e emo">🤖</span> Desenhe algo e veja o palpite da IA'; saveBtn.hidden=true; clr.style.flex='1'; return; }
+    saveBtn.hidden=false; clr.style.flex='';
+    var c=classes[active]; if(!c) return;
+    askEl.className='ask'; askEl.style.background=COLORS[active];
+    askEl.innerHTML='<span class="e emo">'+emoH(c)+'</span> Desenhe: '+nameOf(c,active).toUpperCase();
+    saveBtn.style.background=COLORS[active]; saveBtn.innerHTML='<span class="emo">✔️</span> Guardar como '+(c.emo?'<span class="emo">'+c.emo+'</span>':nameOf(c,active));
+  }
+  function updateSave(){ if(saveBtn) saveBtn.disabled = trained ? false : !inked; }
+  saveBtn.addEventListener('click',function(){
+    if(trained){ clearPad(); showGuess(null); return; }
+    var v=toGrid(); if(!v) return;
+    classes[active].ex.push(v); (classes[active].png=classes[active].png||[]).push(snapshot()); invalidate(); clearPad();
+    renderClasses();
+  });
+  document.getElementById('clear').addEventListener('click',function(){ clearPad(); if(trained) showGuess(null); });
+
+  function invalidate(){ if(trained||model){ trained=false; model=null; document.getElementById('exam').hidden=true; renderTest(); updateAsk(); updateSave(); } }
+
+  /* ---------- treino: regressão softmax (ajuste de pesos por tentativa e erro) ---------- */
+  var trainBtn=document.getElementById('train'), chart=document.getElementById('chart'), cx=chart.getContext('2d'), hist=[], EPOCHS=120;
+  function shuffle(a){ for(var i=a.length-1;i>0;i--){ var j=(Math.random()*(i+1))|0, t=a[i]; a[i]=a[j]; a[j]=t; } return a; }
+  function probs(m,v){ var C=m.W.length, z=new Float32Array(C), mx=-1e9; for(var c=0;c<C;c++){ var s=m.b[c], w=m.W[c]; for(var i=0;i<DIM;i++) s+=w[i]*v[i]; z[c]=s; if(s>mx) mx=s; } var t=0; for(var k=0;k<C;k++){ z[k]=Math.exp(z[k]-mx); t+=z[k]; } for(var q=0;q<C;q++) z[q]/=t; return z; }
+  function argmax(p){ var b=0; for(var i=1;i<p.length;i++) if(p[i]>p[b]) b=i; return b; }
+  function fitModel(set,C,onEpoch,onDone){
+    var m={W:[],b:new Float32Array(C)}; for(var c=0;c<C;c++){ var w=new Float32Array(DIM); for(var i=0;i<DIM;i++) w[i]=(Math.random()-.5)*0.01; m.W.push(w); }
+    var lr=0.006, lam=0.0005, ep=0;
+    function run(){
+      for(var rep=0;rep<2 && ep<EPOCHS;rep++,ep++){
+        var gW=m.W.map(function(){ return new Float32Array(DIM); }), gb=new Float32Array(C), ok=0;
+        set.forEach(function(s){ var p=probs(m,s.v); if(argmax(p)===s.y) ok++; for(var c2=0;c2<C;c2++){ var g=p[c2]-(c2===s.y?1:0); gb[c2]+=g; var gw=gW[c2]; for(var i=0;i<DIM;i++) gw[i]+=g*s.v[i]; } });
+        for(var c3=0;c3<C;c3++){ m.b[c3]-=lr*gb[c3]/set.length; var w=m.W[c3], g2=gW[c3]; for(var j=0;j<DIM;j++) w[j]-=lr*(g2[j]/set.length+lam*w[j]); }
+        if(onEpoch) onEpoch(ep+1, ok/set.length, set.length);
+      }
+      if(ep<EPOCHS) requestAnimationFrame(run); else onDone(m);
+    }
+    run();
+  }
+  trainBtn.addEventListener('click',function(){
+    if(training) return; training=true; trainBtn.disabled=true; trained=false; renderTest();
+    var C=classes.length, train=[], held=[];
+    classes.forEach(function(c,ci){
+      var idx=shuffle(c.ex.map(function(_,i){ return i; }));
+      idx.forEach(function(i,k){
+        if(k===0 && c.ex.length>MINEX-1) held.push({v:c.ex[i],y:ci});               // 1 desenho de cada classe fica de fora, para a prova
+        else { train.push({v:feat(c.ex[i]),y:ci}); for(var a=0;a<AUG;a++) train.push({v:variant(c.ex[i],1),y:ci}); }
+      });
+    });
+    shuffle(train); hist=[];
+    var knobs=[].slice.call(document.querySelectorAll('#knobs .knob'));
+    document.getElementById('say').innerHTML='<span class="emo">🗣️</span> Para estudar mais, ela criou <b>'+(train.length)+' variações</b> dos seus desenhos (girados, maiores, menores). Agora está <b>tentando, errando e ajustando os pesos</b>.';
+    fitModel(train,C,function(ep,acc,n){
+      hist.push(acc); document.getElementById('tN').textContent=(ep*n).toLocaleString('pt-BR');
+      document.getElementById('tAcc').textContent=Math.round(acc*100)+'%'; drawChart();
+      knobs.forEach(function(k,i){ k.style.transform='rotate('+(ep*(i%2?6:-5)*(1+i*0.3))+'deg)'; });
+    },function(m){
+      model=m; trained=true; training=false; trainBtn.disabled=false;
+      var ok=0; held.forEach(function(s){ if(argmax(probs(m,feat(s.v)))===s.y) ok++; });
+      var ex=document.getElementById('exam'); ex.hidden=false;
+      document.getElementById('examT').innerHTML='Prova com <b>'+held.length+' desenhos que ela não usou</b> no treino: acertou '+ok+' de '+held.length;
+      document.getElementById('say').innerHTML='<span class="emo">🔨</span> <b>Agora teste e tente quebrar a sua IA:</b> desenhe algo diferente, ou uma coisa que ela nunca aprendeu. O que ela responde?';
+      clearPad(); renderClasses(); renderTest(); updateAsk(); updateSave(); setStage();
+    });
+  });
+  function drawChart(){
+    var W=chart.width, H=chart.height; cx.clearRect(0,0,W,H);
+    cx.strokeStyle='#D3DAE6'; cx.lineWidth=1; [0,.5,1].forEach(function(f){ cx.beginPath(); cx.moveTo(0,H-6-f*(H-12)); cx.lineTo(W,H-6-f*(H-12)); cx.stroke(); });
+    if(!hist.length) return;
+    cx.strokeStyle='#7B3FC9'; cx.lineWidth=4; cx.lineJoin='round'; cx.beginPath();
+    hist.forEach(function(a,i){ var x=i/(EPOCHS-1)*W, y=H-6-a*(H-12); if(i) cx.lineTo(x,y); else cx.moveTo(x,y); }); cx.stroke();
+  }
+
+  /* ---------- teste ---------- */
+  var testBox=document.getElementById('testBox');
+  function renderTest(){
+    if(!trained){ testBox.innerHTML='<div class="sideIdle">Depois do treino, desenhe algo novo e veja o palpite da IA.</div>'; return; }
+    testBox.innerHTML='<div class="guess"><span class="e emo" id="gE">🤔</span><span class="tx" id="gT">Desenhe no quadro…</span></div><div class="live" id="live" style="margin-top:10px"></div>';
+    var live=document.getElementById('live');
+    classes.forEach(function(c,i){ var r=document.createElement('div'); r.className='lbar'; r.innerHTML='<span class="e emo">'+emoH(c)+'</span><div class="tr"><div class="fl" style="background:'+COLORS[i]+'"></div><span class="nm"></span></div><span class="pc">0%</span>'; r.querySelector('.nm').textContent=nameOf(c,i); live.appendChild(r); });
+  }
+  function guessNow(){ var v=toGrid(); if(!v){ showGuess(null); return; } showGuess(probs(model,feat(v))); }
+  function showGuess(p){
+    var gE=document.getElementById('gE'), gT=document.getElementById('gT'); if(!gE) return;
+    var bars=[].slice.call(document.querySelectorAll('#live .lbar'));
+    if(!p){ gE.innerHTML='🤔'; gT.textContent='Desenhe no quadro…'; bars.forEach(function(r){ r.querySelector('.fl').style.width='0'; r.querySelector('.pc').textContent='0%'; }); return; }
+    var b=argmax(p), pc=Math.round(p[b]*100);
+    gE.innerHTML=emoH(classes[b]);
+    gT.innerHTML=(pc>=75?'Acho que é ':pc>=50?'Talvez seja ':'Hum… será ')+'<b>'+nameOf(classes[b],b)+'</b>'+(pc>=75?'!':'?')+'<br>'+pc+'% de certeza';
+    bars.forEach(function(r,i){ r.querySelector('.fl').style.width=(p[i]*100).toFixed(1)+'%'; r.querySelector('.pc').textContent=Math.round(p[i]*100)+'%'; });
+  }
+
+  /* ---------- baixar um exemplo (para levar ao ChatGPT e criar uma cena) ---------- */
+  var dlN=0;
+  function downloadEx(c,k){
+    var a=document.createElement('a'); dlN++;
+    a.download=((c.name||'desenho').toLowerCase().replace(/[^a-z0-9à-ú]+/gi,'-'))+'-'+(k+1)+'.png'; a.href=c.png[k];
+    document.body.appendChild(a); a.click(); a.remove();
+    document.getElementById('say').innerHTML='<span class="emo">⬇️</span> <b>Desenho baixado!</b> Envie ao <b>ChatGPT</b> e peça: <i>“crie uma cena colorida a partir deste desenho”</i>.';
+  }
+  /* recorte do desenho em alta resolução (fundo branco) */
+  function snapshot(){
+    var W=pad.width, H=pad.height, d=px.getImageData(0,0,W,H).data, minx=W,miny=H,maxx=-1,maxy=-1;
+    for(var y=0;y<H;y+=2) for(var x=0;x<W;x+=2) if(d[(y*W+x)*4]<128){ if(x<minx)minx=x; if(x>maxx)maxx=x; if(y<miny)miny=y; if(y>maxy)maxy=y; }
+    var O=512, c=document.createElement('canvas'); c.width=O; c.height=O; var g=c.getContext('2d'); g.fillStyle='#fff'; g.fillRect(0,0,O,O);
+    if(maxx<0) return c.toDataURL('image/png');
+    var m=24, bw=maxx-minx+2*m, bh=maxy-miny+2*m, side=Math.max(bw,bh), sc=Math.min(1.6,(O-40)/side);
+    g.imageSmoothingQuality='high';
+    g.drawImage(pad,minx-m,miny-m,bw,bh,(O-bw*sc)/2,(O-bh*sc)/2,bw*sc,bh*sc);
+    return c.toDataURL('image/png');
+  }
+
+  /* ---------- etapas no topo ---------- */
+  var need=document.getElementById('need'), hint=document.getElementById('hint');
+  function setStage(){
+    var ready=classes.length>=2 && classes.every(function(c){ return c.ex.length>=MINEX; });
+    trainBtn.disabled=!ready||training;
+    need.textContent= ready ? (trained ? 'Desenhou mais exemplos? Treine de novo.' : 'Tudo pronto: clique em Treinar!') : 'Desenhe pelo menos '+MINEX+' exemplos de cada classe';
+    hint.textContent= trained ? 'Para ensinar mais, clique numa classe e desenhe de novo.' : 'Desenhe do seu jeito: cada desenho um pouco diferente ajuda a IA a aprender.';
+    var s= trained ? 4 : (ready ? 2 : 1);
+    [].forEach.call(document.querySelectorAll('#trail > span'),function(el){ var k=+el.dataset.s; el.classList.toggle('on', k===s); el.classList.toggle('done', k<s); });
+  }
+
+  function start(){
+    classes=[]; active=0; model=null; trained=false; training=false; hist=[]; drawChart();
+    document.getElementById('tN').textContent='0'; document.getElementById('tAcc').textContent='–'; document.getElementById('exam').hidden=true;
+    document.getElementById('say').innerHTML='<span class="emo">🗣️</span> Ninguém vai escrever regra nenhuma: a máquina vai <b>descobrir sozinha</b> o que diferencia um desenho do outro.';
+    addClass('Sol','☀️'); addClass('Casa','🏠'); active=0; renderClasses(); renderTest(); clearPad(); updateSave();
+  }
+  document.getElementById('reset').addEventListener('click',start);
+  start();
+  window.__state=function(){ return {trained:trained, n:classes.map(function(c){ return c.ex.length; })}; };   // usado só em testes
+})();
+</script>
+</body>
+</html>
